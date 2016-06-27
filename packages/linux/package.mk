@@ -34,6 +34,10 @@ case "$LINUX" in
     PKG_VERSION="amlogic-3.10-c8d5b2f"
     PKG_URL="$DISTRO_SRC/$PKG_NAME-$PKG_VERSION.tar.xz"
     ;;
+  amlogic-kszaq)
+    PKG_VERSION="543ae83"
+    PKG_URL="https://github.com/kszaq/linux/archive/$PKG_VERSION.tar.gz"
+    ;;
   imx6)
     PKG_VERSION="3.14-mx6-sr"
     PKG_COMMIT="4386797"
@@ -51,7 +55,7 @@ case "$LINUX" in
     PKG_DEPENDS_TARGET="$PKG_DEPENDS_TARGET imx6-status-led imx6-soc-fan irqbalanced"
     ;;
   *)
-    PKG_VERSION="4.4.13"
+    PKG_VERSION="4.4.7"
     PKG_URL="http://www.kernel.org/pub/linux/kernel/v4.x/$PKG_NAME-$PKG_VERSION.tar.xz"
     ;;
 esac
@@ -116,6 +120,9 @@ post_patch() {
 
   # copy some extra firmware to linux tree
   cp -R $PKG_DIR/firmware/* $PKG_BUILD/firmware
+  
+  # copy meson8-x8hp.dtd
+  cp $PROJECT_DIR/$PROJECT/dtc/meson8-x8hp.dtd $PKG_BUILD/arch/arm/boot/dts/amlogic/
 
   make -C $PKG_BUILD oldconfig
 }
@@ -148,19 +155,13 @@ make_target() {
     $SCRIPTS/install initramfs
   )
 
-  if [ "$BOOTLOADER" = "u-boot" -a -n "$KERNEL_UBOOT_EXTRA_TARGET" ]; then
+  if [ "$BOOTLOADER" = "u-boot" -a -n "$KERNEL_UBOOT_EXTRA_TARGET" -a -z "$BUILD_ANDROID_BOOTIMG" ]; then
     for extra_target in "$KERNEL_UBOOT_EXTRA_TARGET"; do
       LDFLAGS="" make $extra_target
     done
   fi
 
   LDFLAGS="" make $KERNEL_TARGET $KERNEL_MAKE_EXTRACMD
-
-  if [ "$BUILD_ANDROID_BOOTIMG" = "yes" ]; then
-    LDFLAGS="" mkbootimg --kernel arch/$TARGET_KERNEL_ARCH/boot/$KERNEL_TARGET --ramdisk $ROOT/$BUILD/image/initramfs.cpio \
-      --second "$ANDROID_BOOTIMG_SECOND" --output arch/$TARGET_KERNEL_ARCH/boot/boot.img
-    mv -f arch/$TARGET_KERNEL_ARCH/boot/boot.img arch/$TARGET_KERNEL_ARCH/boot/$KERNEL_TARGET
-  fi
 }
 
 makeinstall_target() {
@@ -211,3 +212,4 @@ post_install() {
   # bluez looks in /etc/firmware/
     ln -sf /lib/firmware/ $INSTALL/etc/firmware
 }
+
